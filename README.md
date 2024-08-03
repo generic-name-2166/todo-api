@@ -24,6 +24,13 @@ cd src/todo_api
 fastapi dev main.py
 ```
 
+Run tests with 
+
+```bash
+cd ../..
+pytest  # --cov-report html  # For HTML coverage report
+```
+
 # Notice
 
 This project uses the following dependencies

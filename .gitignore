@@ -8,6 +8,10 @@ venv/
 *.egg-info
 ## Formatter
 .ruff_cache/
+## Pytest
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Build artifacts
 build/

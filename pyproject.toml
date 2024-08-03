@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 target-version = "py312"
 
 [tool.pytest.ini_options]
-addopts = "--cov=figure_lib"
+addopts = "--cov=todo_api"
 pythonpath = [
     ".", "src",
 ]
