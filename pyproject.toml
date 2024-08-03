@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=72.1", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.pytest.ini_options]
+addopts = "--cov=figure_lib"
+pythonpath = [
+    ".", "src",
+]
+testpaths = [
+    "tests",
+]
