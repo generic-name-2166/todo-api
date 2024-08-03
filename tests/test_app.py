@@ -278,3 +278,29 @@ def test_adding_permission(client: TestClient, mock_user: MockUser) -> None:
         assert response.status_code == 200
     finally:
         delete_mock_user(client, token)
+
+
+def test_removing_permission(client: TestClient, mock_user: MockUser) -> None:
+    create_mock_user(client, mock_user)
+    token = login(client, mock_user)
+    try:
+        body = {"name": "test"}
+        response = client.post("/tasks", json=body, headers=token)
+        assert response.status_code == 200
+
+        response = client.get("/tasks", headers=token)
+        assert response.status_code == 200
+        task = response.json()[0]
+        task_id = task["id"]
+
+        body = {"recepient_id": 1, "perm_type": "read"}
+        url = f"/tasks/{task_id}/permissions"
+        response = client.post(
+            url, json=body, headers=token
+        )
+        assert response.status_code == 200
+
+        response = client.delete(url, params=body, headers=token)
+        assert response.status_code == 200
+    finally:
+        delete_mock_user(client, token)
