@@ -55,3 +55,8 @@ async def update_user(db: AsyncConnection, user_id: int, username: str) -> bool:
     cursor = await db.execute(query)
     result: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
     return result is not None and result["update_user"]
+
+
+async def remove_user(db: AsyncConnection, user_id: int):
+    query: sql.Composed = sql.SQL("SELECT delete_user({user_id})").format(user_id=user_id)
+    await db.execute(query)
