@@ -77,6 +77,18 @@ def test_invalid_token(client: TestClient, mock_user: MockUser) -> None:
     delete_mock_user(client, token)
 
 
+def test_invalid_password(client: TestClient, mock_user: MockUser) -> None:
+    create_mock_user(client, mock_user)
+    token = login(client, mock_user)
+
+    invalid = mock_user.copy()
+    invalid["password"] = "invalid"
+    response = client.post("/token", data=invalid)
+    assert response.status_code == 401
+
+    delete_mock_user(client, token)
+
+
 def test_duplicate_name(client: TestClient, mock_user: MockUser) -> None:
     create_mock_user(client, mock_user)
     token = login(client, mock_user)
@@ -87,12 +99,11 @@ def test_duplicate_name(client: TestClient, mock_user: MockUser) -> None:
     delete_mock_user(client, token)
 
 
-@pytest.mark.skip(reason="Fix username parameter in /user PUT")
 def test_duplicate_name_update(client: TestClient, mock_user: MockUser) -> None:
     create_mock_user(client, mock_user)
     token = login(client, mock_user)
 
-    response = client.put("/user", json={"username": "johndoe"}, headers=token)
+    response = client.put("/user", json="johndoe", headers=token)
     assert response.status_code == 409
 
     delete_mock_user(client, token)
