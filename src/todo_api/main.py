@@ -15,6 +15,7 @@ from todo_api.auth import (
     Token,
 )
 from todo_api.db import (
+    add_permission,
     create_task,
     create_user,
     db_pool,
@@ -27,7 +28,7 @@ from todo_api.db import (
     update_task,
     update_user,
 )
-from todo_api.models import NewTask, NewUser, Permission, Task, User
+from todo_api.models import NewPermission, NewTask, NewUser, Permission, Task, User
 
 
 @asynccontextmanager
@@ -130,11 +131,12 @@ async def get_task_permissions(
 async def post_task_permissions(
     user: Annotated[User, Depends(get_current_user)],
     task_id: int,
-    perm: Permission,
+    perm: NewPermission,
     db: AsyncConnection = Depends(get_db_conn),
 ):
-    # TODO
-    pass
+    result: bool = await add_permission(db, user.id, task_id, perm)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
 
 
 @app.delete("/tasks/{task_id}/permissions")

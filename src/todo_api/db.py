@@ -5,7 +5,7 @@ from psycopg import AsyncConnection, sql
 from psycopg.rows import dict_row, DictRow
 from psycopg_pool import AsyncConnectionPool
 
-from todo_api.models import NewTask, Permission, Task, User
+from todo_api.models import NewPermission, NewTask, Permission, Task, User
 
 
 def contsruct_uri(user: str, password: str, host: str, port: int, db_name: str) -> str:
@@ -155,3 +155,20 @@ async def find_permissions(
     cursor = await cursor.execute(query)
     perms: list[DictRow] = await cursor.fetchall()  # type: ignore  type doesn't see dict_row factory
     return list(map(form_permission, perms))
+
+
+async def add_permission(
+    db: AsyncConnection, user_id: int, task_id: int, permission: NewPermission
+) -> bool:
+    """Returns False if the user isn't authorized to add permissions"""
+    query: sql.Composed = sql.SQL(
+        "SELECT add_permission({user_id}, {task_id}, {recepient_id}, {perm_type})"
+    ).format(
+        user_id=user_id,
+        task_id=task_id,
+        recepient_id=permission.recepient_id,
+        perm_type=permission.perm_type,
+    )
+    cursor = await db.execute(query)
+    result: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
+    return result is not None and result["add_permission"]

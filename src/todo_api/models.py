@@ -34,6 +34,11 @@ class PermType(StrEnum):
     Update = "update"
 
 
+class NewPermission(BaseModel):
+    recepient_id: int
+    perm_type: PermType
+
+
 class Permission(BaseModel):
     task_id: int
     user_id: int
