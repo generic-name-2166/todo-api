@@ -9,7 +9,7 @@ from passlib.context import CryptContext
 from psycopg import AsyncConnection
 from pydantic import BaseModel
 
-from todo_api.db import get_db_conn, find_user
+from todo_api.db import find_user, get_db_conn
 from todo_api.models import User
 
 

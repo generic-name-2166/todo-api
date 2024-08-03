@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import Body, Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -15,15 +15,16 @@ from todo_api.auth import (
     Token,
 )
 from todo_api.db import (
+    create_task,
     create_user,
     db_pool,
+    find_task,
     get_db_conn,
-    update_user,
-    remove_user,
     read_tasks,
-    create_task,
+    remove_user,
+    update_user,
 )
-from todo_api.models import NewTask, NewUser, User, Task, Permission
+from todo_api.models import NewTask, NewUser, Permission, Task, User
 
 
 @asynccontextmanager
@@ -81,8 +82,10 @@ async def get_task_by_id(
     task_id: int,
     db: AsyncConnection = Depends(get_db_conn),
 ) -> Task:
-    # TODO
-    return Task(id=task_id, creator_id=0, name="TODO", finished=False)
+    result: Optional[Task] = await find_task(db, user.id, task_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+    return result
 
 
 @app.put("/tasks/{task_id}")
