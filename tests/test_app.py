@@ -254,7 +254,9 @@ def test_permissions_nonexistent(client: TestClient, mock_user: MockUser) -> Non
         assert response.status_code == 404
 
         body = {"recepient_id": 1, "perm_type": "read"}
-        response = client.post(f"/tasks/{task_id + 1}/permissions", json=body, headers=token)
+        response = client.post(
+            f"/tasks/{task_id + 1}/permissions", json=body, headers=token
+        )
         assert response.status_code == 404
     finally:
         delete_mock_user(client, token)
@@ -274,7 +276,9 @@ def test_adding_permission(client: TestClient, mock_user: MockUser) -> None:
         task_id = task["id"]
 
         body = {"recepient_id": 1, "perm_type": "read"}
-        response = client.post(f"/tasks/{task_id}/permissions", json=body, headers=token)
+        response = client.post(
+            f"/tasks/{task_id}/permissions", json=body, headers=token
+        )
         assert response.status_code == 200
     finally:
         delete_mock_user(client, token)
@@ -295,9 +299,7 @@ def test_removing_permission(client: TestClient, mock_user: MockUser) -> None:
 
         body = {"recepient_id": 1, "perm_type": "read"}
         url = f"/tasks/{task_id}/permissions"
-        response = client.post(
-            url, json=body, headers=token
-        )
+        response = client.post(url, json=body, headers=token)
         assert response.status_code == 200
 
         response = client.delete(url, params=body, headers=token)

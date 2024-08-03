@@ -175,7 +175,11 @@ async def add_permission(
 
 
 async def remove_permission(
-    db: AsyncConnection, user_id: int, task_id: int, recepient_id: int, perm_type: PermType
+    db: AsyncConnection,
+    user_id: int,
+    task_id: int,
+    recepient_id: int,
+    perm_type: PermType,
 ) -> bool:
     """Returns False if the user isn't authorized to add permissions"""
     query: sql.Composed = sql.SQL(

@@ -29,7 +29,15 @@ from todo_api.db import (
     update_task,
     update_user,
 )
-from todo_api.models import NewPermission, NewTask, NewUser, Permission, PermType, Task, User
+from todo_api.models import (
+    NewPermission,
+    NewTask,
+    NewUser,
+    Permission,
+    PermType,
+    Task,
+    User,
+)
 
 
 @asynccontextmanager
@@ -148,7 +156,9 @@ async def delete_task_permissions(
     perm_type: PermType,
     db: AsyncConnection = Depends(get_db_conn),
 ):
-    result: bool = await remove_permission(db, user.id, task_id, recepient_id, perm_type)
+    result: bool = await remove_permission(
+        db, user.id, task_id, recepient_id, perm_type
+    )
     if not result:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
 
