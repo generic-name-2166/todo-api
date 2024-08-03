@@ -14,7 +14,15 @@ from todo_api.auth import (
     get_password_hash,
     Token,
 )
-from todo_api.db import create_user, db_pool, get_db_conn, update_user, remove_user, read_tasks, create_task
+from todo_api.db import (
+    create_user,
+    db_pool,
+    get_db_conn,
+    update_user,
+    remove_user,
+    read_tasks,
+    create_task,
+)
 from todo_api.models import NewTask, NewUser, User, Task, Permission
 
 
@@ -172,5 +180,9 @@ async def delete_user(
     user: Annotated[User, Depends(get_current_user)],
     db: AsyncConnection = Depends(get_db_conn),
 ):
-    """Deletes currently logged in user"""
+    """
+    Deletes currently logged in user
+
+    Also deletes all tasks they had created
+    """
     await remove_user(db, user.id)

@@ -58,12 +58,20 @@ async def update_user(db: AsyncConnection, user_id: int, username: str) -> bool:
 
 
 async def remove_user(db: AsyncConnection, user_id: int):
-    query: sql.Composed = sql.SQL("SELECT delete_user({user_id})").format(user_id=user_id)
+    query: sql.Composed = sql.SQL("SELECT remove_user({user_id})").format(
+        user_id=user_id
+    )
     await db.execute(query)
 
 
 def form_task(info: DictRow) -> Task:
-    return Task(id=info["id"], creator_id=info["creator_id"], name=info["name"], description=info["description"], finished=info["finished"])
+    return Task(
+        id=info["id"],
+        creator_id=info["creator_id"],
+        name=info["name"],
+        description=info["description"],
+        finished=info["finished"],
+    )
 
 
 async def read_tasks(db: AsyncConnection, user_id: int) -> list[Task]:
