@@ -5,7 +5,7 @@ from psycopg import AsyncConnection, sql
 from psycopg.rows import dict_row, DictRow
 from psycopg_pool import AsyncConnectionPool
 
-from todo_api.models import Task, User
+from todo_api.models import Task, User, NewTask
 
 
 def contsruct_uri(user: str, password: str, host: str, port: int, db_name: str) -> str:
@@ -73,3 +73,10 @@ async def read_tasks(db: AsyncConnection, user_id: int) -> list[Task]:
     cursor = await db.execute(query)
     task_data: list[DictRow] = await cursor.fetchall()  # type: ignore  type doesn't see dict_row factory
     return list(map(form_task, task_data))
+
+
+async def create_task(db: AsyncConnection, user_id: int, task: NewTask):
+    query: sql.Composed = sql.SQL(
+        "SELECT create_task({user_id}, {name}, {description})"
+    ).format(user_id=user_id, name=task.name, description=task.description)
+    await db.execute(query)

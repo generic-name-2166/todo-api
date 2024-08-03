@@ -14,7 +14,7 @@ from todo_api.auth import (
     get_password_hash,
     Token,
 )
-from todo_api.db import create_user, db_pool, get_db_conn, update_user, remove_user, read_tasks
+from todo_api.db import create_user, db_pool, get_db_conn, update_user, remove_user, read_tasks, create_task
 from todo_api.models import NewTask, NewUser, User, Task, Permission
 
 
@@ -61,12 +61,10 @@ async def get_tasks(
 @app.post("/tasks")
 async def post_task(
     user: Annotated[User, Depends(get_current_user)],
-    task: Task,
+    task: NewTask,
     db: AsyncConnection = Depends(get_db_conn),
-) -> int:
-    """Returns the id of added task"""
-    # TODO
-    return 0
+):
+    await create_task(db, user.id, task)
 
 
 @app.get("/tasks/{task_id}")
