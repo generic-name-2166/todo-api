@@ -18,6 +18,7 @@ class User(BaseModel):
 class NewTask(BaseModel):
     name: str
     description: Optional[str] = Field(default=None)
+    finished: Optional[bool] = Field(default=None)
 
 
 class Task(BaseModel):

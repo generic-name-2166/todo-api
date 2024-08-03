@@ -99,3 +99,20 @@ async def find_task(db: AsyncConnection, user_id: int, task_id: int) -> Optional
     if task_data is None:
         return None
     return form_task(task_data)
+
+
+async def update_task(
+    db: AsyncConnection, user_id: int, task_id: int, task: NewTask
+) -> bool:
+    query: sql.Composed = sql.SQL(
+        "SELECT update_task({user_id}, {task_id}, {name}, {description}, {finished})"
+    ).format(
+        user_id=user_id,
+        task_id=task_id,
+        name=task.name,
+        description=task.description,
+        finished=task.finished,
+    )
+    cursor = await db.execute(query)
+    result: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
+    return result is not None and result["update_task"]

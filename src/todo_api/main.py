@@ -22,6 +22,7 @@ from todo_api.db import (
     get_db_conn,
     read_tasks,
     remove_user,
+    update_task,
     update_user,
 )
 from todo_api.models import NewTask, NewUser, Permission, Task, User
@@ -95,8 +96,9 @@ async def put_task(
     task: NewTask,
     db: AsyncConnection = Depends(get_db_conn),
 ):
-    # TODO
-    pass
+    result: bool = await update_task(db, user.id, task_id, task)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
 
 
 @app.delete("/tasks/{task_id}")
