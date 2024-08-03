@@ -40,10 +40,18 @@ async def find_user(db: AsyncConnection, username: str) -> Optional[User]:
 
 
 async def create_user(db: AsyncConnection, username: str, hashed_password: str) -> bool:
-    query: sql.Composed = sql.SQL("SELECT create_user({username}, {hashed_password})").format(
-        username=username,
-        hashed_password=hashed_password
-    )
+    query: sql.Composed = sql.SQL(
+        "SELECT create_user({username}, {hashed_password})"
+    ).format(username=username, hashed_password=hashed_password)
     cursor = await db.execute(query)
     result: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
     return result is not None and result["create_user"]
+
+
+async def update_user(db: AsyncConnection, user_id: int, username: str) -> bool:
+    query: sql.Composed = sql.SQL("SELECT update_user({user_id}, {username})").format(
+        user_id=user_id, username=username
+    )
+    cursor = await db.execute(query)
+    result: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
+    return result is not None and result["update_user"]

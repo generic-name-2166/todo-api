@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Body, Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from psycopg import AsyncConnection
 
@@ -14,7 +14,7 @@ from todo_api.auth import (
     get_password_hash,
     Token,
 )
-from todo_api.db import create_user, db_pool, get_db_conn
+from todo_api.db import create_user, db_pool, get_db_conn, update_user
 from todo_api.models import NewTask, NewUser, User, Task, Permission
 
 
@@ -151,10 +151,22 @@ async def post_user(user: NewUser, db: AsyncConnection = Depends(get_db_conn)):
 
 
 @app.put("/user")
-async def put_user(current: Annotated[User, Depends(get_current_user)], user: NewUser):
-    # TODO
-    # TODO check if user with this username already exists
-    pass
+async def put_user(
+    current: Annotated[User, Depends(get_current_user)],
+    username: Annotated[str, Body()],
+    db: AsyncConnection = Depends(get_db_conn),
+):
+    """
+    Update username of current user
+
+    Logs user out on success
+    """
+    result: bool = await update_user(db, current.id, username)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="That username is taken. Try another",
+        )
 
 
 @app.delete("/user")
