@@ -1,9 +1,11 @@
 from collections.abc import AsyncGenerator
-from typing import Any
+from typing import Any, Optional
 
-from psycopg import AsyncConnection
-from psycopg.rows import dict_row
+from psycopg import AsyncConnection, sql
+from psycopg.rows import dict_row, DictRow
 from psycopg_pool import AsyncConnectionPool
+
+from todo_api.models import User
 
 
 def contsruct_uri(user: str, password: str, host: str, port: int, db_name: str) -> str:
@@ -20,3 +22,18 @@ async def get_db_conn() -> AsyncGenerator[AsyncConnection]:
     global db_pool
     async with db_pool.connection() as aconn:
         yield aconn
+
+
+async def find_user(db: AsyncConnection, username: str) -> Optional[User]:
+    query: sql.Composed = sql.SQL("SELECT * FROM get_current_user({username})").format(
+        username=username
+    )
+    a = await db.execute(query)
+    user_data: Optional[DictRow] = await a.fetchone()  # type: ignore  type doesn't see dict_row factory
+    if user_data is None:
+        return None
+    return User(
+        id=user_data["id"],
+        username=user_data["username"],
+        hashed_password=user_data["hashed_password"],
+    )
