@@ -9,13 +9,7 @@ RETURNS boolean AS $$
 DECLARE
     is_authorized boolean;
 BEGIN
-    is_authorized := (SELECT EXISTS (
-        SELECT 1
-        FROM task AS t
-        LEFT JOIN permissions AS p
-        ON t.id = p.task_id AND p.user_id = p_user_id AND p.perm_type = 'update'
-        WHERE t.id = p_task_id AND (t.creator_id = p_user_id OR p.user_id IS NOT NULL)
-    ));
+    is_authorized := find_is_authorized(p_user_id, p_task_id, 'update');
 
     IF is_authorized THEN
         UPDATE task

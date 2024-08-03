@@ -5,7 +5,7 @@ from psycopg import AsyncConnection, sql
 from psycopg.rows import dict_row, DictRow
 from psycopg_pool import AsyncConnectionPool
 
-from todo_api.models import NewTask, Task, User
+from todo_api.models import NewTask, Permission, Task, User
 
 
 def contsruct_uri(user: str, password: str, host: str, port: int, db_name: str) -> str:
@@ -127,3 +127,31 @@ async def remove_task(db: AsyncConnection, user_id: int, task_id: int) -> bool:
     cursor = await db.execute(query)
     result: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
     return result is not None and result["remove_task"]
+
+
+def form_permission(info: DictRow) -> Permission:
+    return Permission(
+        task_id=info["task_id"], user_id=info["user_id"], perm_type=info["perm_type"]
+    )
+
+
+async def find_permissions(
+    db: AsyncConnection, user_id: int, task_id: int
+) -> Optional[list[Permission]]:
+    """Returns None if user is not authorized to see permissions"""
+    auth_query: sql.Composed = sql.SQL(
+        "SELECT find_is_creator({user_id}, {task_id})"
+    ).format(user_id=user_id, task_id=task_id)
+    cursor = await db.execute(auth_query)
+    result: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
+    is_creator: bool = result is not None and result["find_is_creator"]
+
+    if not is_creator:
+        return None
+
+    query: sql.Composed = sql.SQL(
+        "SELECT * FROM find_permissions({user_id}, {task_id})"
+    ).format(user_id=user_id, task_id=task_id)
+    cursor = await cursor.execute(query)
+    perms: list[DictRow] = await cursor.fetchall()  # type: ignore  type doesn't see dict_row factory
+    return list(map(form_permission, perms))

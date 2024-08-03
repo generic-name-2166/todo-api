@@ -36,5 +36,5 @@ class PermType(StrEnum):
 
 class Permission(BaseModel):
     task_id: int
-    recepient_id: int
+    user_id: int
     perm_type: PermType

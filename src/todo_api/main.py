@@ -18,6 +18,7 @@ from todo_api.db import (
     create_task,
     create_user,
     db_pool,
+    find_permissions,
     find_task,
     get_db_conn,
     read_tasks,
@@ -119,8 +120,10 @@ async def get_task_permissions(
     task_id: int,
     db: AsyncConnection = Depends(get_db_conn),
 ) -> list[Permission]:
-    # TODO
-    return []
+    result: Optional[list[Permission]] = await find_permissions(db, user.id, task_id)
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+    return result
 
 
 @app.post("/tasks/{task_id}/permissions")
