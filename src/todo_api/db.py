@@ -5,7 +5,7 @@ from psycopg import AsyncConnection, sql
 from psycopg.rows import dict_row, DictRow
 from psycopg_pool import AsyncConnectionPool
 
-from todo_api.models import User
+from todo_api.models import Task, User
 
 
 def contsruct_uri(user: str, password: str, host: str, port: int, db_name: str) -> str:
@@ -60,3 +60,16 @@ async def update_user(db: AsyncConnection, user_id: int, username: str) -> bool:
 async def remove_user(db: AsyncConnection, user_id: int):
     query: sql.Composed = sql.SQL("SELECT delete_user({user_id})").format(user_id=user_id)
     await db.execute(query)
+
+
+def form_task(info: DictRow) -> Task:
+    return Task(id=info["id"], creator_id=info["creator_id"], name=info["name"], description=info["description"], finished=info["finished"])
+
+
+async def read_tasks(db: AsyncConnection, user_id: int) -> list[Task]:
+    query: sql.Composed = sql.SQL("SELECT * FROM read_tasks({user_id})").format(
+        user_id=user_id
+    )
+    cursor = await db.execute(query)
+    task_data: list[DictRow] = await cursor.fetchall()  # type: ignore  type doesn't see dict_row factory
+    return list(map(form_task, task_data))

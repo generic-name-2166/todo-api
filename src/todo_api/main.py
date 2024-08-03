@@ -14,7 +14,7 @@ from todo_api.auth import (
     get_password_hash,
     Token,
 )
-from todo_api.db import create_user, db_pool, get_db_conn, update_user, remove_user
+from todo_api.db import create_user, db_pool, get_db_conn, update_user, remove_user, read_tasks
 from todo_api.models import NewTask, NewUser, User, Task, Permission
 
 
@@ -54,8 +54,8 @@ async def get_tasks(
     user: Annotated[User, Depends(get_current_user)],
     db: AsyncConnection = Depends(get_db_conn),
 ) -> list[Task]:
-    # TODO
-    return []
+    """Lists task user is creator of or has read permissions for"""
+    return await read_tasks(db, user.id)
 
 
 @app.post("/tasks")
