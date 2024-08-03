@@ -104,6 +104,7 @@ async def find_task(db: AsyncConnection, user_id: int, task_id: int) -> Optional
 async def update_task(
     db: AsyncConnection, user_id: int, task_id: int, task: NewTask
 ) -> bool:
+    """Returns whether user is authorized to update the task"""
     query: sql.Composed = sql.SQL(
         "SELECT update_task({user_id}, {task_id}, {name}, {description}, {finished})"
     ).format(
@@ -116,3 +117,13 @@ async def update_task(
     cursor = await db.execute(query)
     result: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
     return result is not None and result["update_task"]
+
+
+async def remove_task(db: AsyncConnection, user_id: int, task_id: int) -> bool:
+    """Returns whether user is authorized to delete the task"""
+    query: sql.Composed = sql.SQL("SELECT remove_task({user_id}, {task_id})").format(
+        user_id=user_id, task_id=task_id
+    )
+    cursor = await db.execute(query)
+    result: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
+    return result is not None and result["remove_task"]

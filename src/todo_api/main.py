@@ -21,6 +21,7 @@ from todo_api.db import (
     find_task,
     get_db_conn,
     read_tasks,
+    remove_task,
     remove_user,
     update_task,
     update_user,
@@ -107,8 +108,9 @@ async def delete_task(
     task_id: int,
     db: AsyncConnection = Depends(get_db_conn),
 ):
-    # TODO
-    pass
+    result: bool = await remove_task(db, user.id, task_id)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
 
 
 @app.get("/tasks/{task_id}/permissions")
