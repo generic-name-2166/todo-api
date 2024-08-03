@@ -7,12 +7,14 @@ Minimalistic RESTful API for task tracking
 ## Build and run
 
 ```bash
-# TODO
+# TODO docker
 ```
 
 and go to http://localhost:8000
 
 ## Development
+
+Prepare the database with applying scripts in migration folder
 
 ```bash
 python -m venv venv
@@ -26,3 +28,10 @@ fastapi dev main.py
 
 This project uses the following dependencies
 - `FastAPI`
+- `pyjwt`
+- `passlib`
+- `psycopg`
+
+- `ruff`
+- `pytest`
+- `pytest-cov`
