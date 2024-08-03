@@ -28,8 +28,8 @@ async def find_user(db: AsyncConnection, username: str) -> Optional[User]:
     query: sql.Composed = sql.SQL("SELECT * FROM get_current_user({username})").format(
         username=username
     )
-    a = await db.execute(query)
-    user_data: Optional[DictRow] = await a.fetchone()  # type: ignore  type doesn't see dict_row factory
+    cursor = await db.execute(query)
+    user_data: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
     if user_data is None:
         return None
     return User(
@@ -37,3 +37,13 @@ async def find_user(db: AsyncConnection, username: str) -> Optional[User]:
         username=user_data["username"],
         hashed_password=user_data["hashed_password"],
     )
+
+
+async def create_user(db: AsyncConnection, username: str, hashed_password: str) -> bool:
+    query: sql.Composed = sql.SQL("SELECT create_user({username}, {hashed_password})").format(
+        username=username,
+        hashed_password=hashed_password
+    )
+    cursor = await db.execute(query)
+    result: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
+    return result is not None and result["create_user"]

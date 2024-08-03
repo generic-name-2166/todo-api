@@ -11,9 +11,10 @@ from todo_api.auth import (
     authenticate_user,
     create_access_token,
     get_current_user,
+    get_password_hash,
     Token,
 )
-from todo_api.db import db_pool, get_db_conn
+from todo_api.db import create_user, db_pool, get_db_conn
 from todo_api.models import NewTask, NewUser, User, Task, Permission
 
 
@@ -135,15 +136,18 @@ async def delete_task_permissions(
 async def get_user(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:
-    # SELECT * FROM get_current_user('john_doe');
     return current_user
 
 
 @app.post("/user")
-async def post_user(user: NewUser):
-    # TODO
-    # TODO check if user with this username already exists
-    pass
+async def post_user(user: NewUser, db: AsyncConnection = Depends(get_db_conn)):
+    hashed_password: str = get_password_hash(user.password)
+    result: bool = await create_user(db, user.username, hashed_password)
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="That username is taken. Try another",
+        )
 
 
 @app.put("/user")
