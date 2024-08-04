@@ -1,5 +1,7 @@
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import timedelta
+import platform
 from typing import Annotated, Optional
 
 from fastapi import Body, Depends, FastAPI, HTTPException, status
@@ -38,6 +40,12 @@ from todo_api.models import (
     Task,
     User,
 )
+
+
+# On Windows, Psycopg is not compatible with the default ProactorEventLoop
+# https://www.psycopg.org/psycopg3/docs/advanced/async.html
+if platform.system() == "Windows":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 @asynccontextmanager

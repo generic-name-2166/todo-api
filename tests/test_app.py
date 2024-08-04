@@ -1,14 +1,7 @@
-import asyncio
-
 from fastapi.testclient import TestClient
 import pytest
 
 from todo_api.main import app
-
-
-# On Windows, Psycopg is not compatible with the default ProactorEventLoop
-# https://www.psycopg.org/psycopg3/docs/advanced/async.html
-asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 type MockUser = dict[str, str]
