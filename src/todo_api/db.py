@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+import os
 from typing import Any, Optional
 
 from psycopg import AsyncConnection, sql
@@ -12,7 +13,8 @@ def contsruct_uri(user: str, password: str, host: str, port: int, db_name: str) 
     return f"postgres://{user}:{password}@{host}:{port}/{db_name}"
 
 
-CONNINFO: str = contsruct_uri("postgres", "postgres", "localhost", 5432, "todo_api")
+HOST: str = os.environ.get("POSTGRES_HOST", None) or "localhost"
+CONNINFO: str = contsruct_uri("postgres", "postgres", HOST, 5432, "todo_api")
 CONN_ARGS: dict[str, Any] = {"row_factory": dict_row}
 
 db_pool = AsyncConnectionPool(conninfo=CONNINFO, open=False, kwargs=CONN_ARGS)

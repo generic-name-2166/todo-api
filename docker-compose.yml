@@ -1,0 +1,25 @@
+services:
+  todo_api:
+    image: todo-api
+    pull_policy: never
+    container_name: todo-api
+    build:
+      context: ./
+      dockerfile: Dockerfile
+      target: runner
+    ports:
+      - 8000:8000
+    env_file:
+      - .env.example
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: todo-postgres
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+  
+volumes:
+  pgdata:

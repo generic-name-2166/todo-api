@@ -6,13 +6,12 @@ build-backend = "setuptools.build_meta"
 name = "todo_api"
 version = "0.1.0"
 dependencies = [
-    "fastapi >= 0.112",
+    "fastapi[standard] >= 0.112",
     "pyjwt >= 2.9",
     "passlib[bcrypt] >= 1.7",
     "psycopg[binary, pool] >= 3.2",
 ]
 requires-python = ">=3.12"
-readme = "README.md"
 
 [project.optional-dependencies]
 testing = [
