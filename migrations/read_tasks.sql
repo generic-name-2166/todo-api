@@ -5,7 +5,7 @@ RETURNS TABLE(
     name varchar(100),
     description text,
     finished boolean
-) AS $$
+) STABLE AS $$
 BEGIN
     RETURN QUERY
     SELECT 

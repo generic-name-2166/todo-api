@@ -5,7 +5,7 @@ RETURNS TABLE(
     name varchar(100),
     description text,
     finished boolean
-) AS $$
+) STABLE AS $$
 BEGIN
     RETURN QUERY 
     SELECT t.id, t.creator_id, t.name, t.description, t.finished

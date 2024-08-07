@@ -2,7 +2,7 @@ CREATE OR REPLACE FUNCTION find_is_creator(
     p_user_id integer, 
     p_task_id integer 
 )
-RETURNS boolean AS $$
+RETURNS boolean STABLE AS $$
 BEGIN
     RETURN (SELECT EXISTS (
         SELECT 1

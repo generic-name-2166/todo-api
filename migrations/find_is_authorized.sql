@@ -3,7 +3,7 @@ CREATE OR REPLACE FUNCTION find_is_authorized(
     p_task_id integer, 
     p_perm_type varchar(50)
 )
-RETURNS boolean AS $$
+RETURNS boolean STABLE AS $$
 BEGIN
     RETURN (SELECT EXISTS (
         SELECT 1

@@ -6,7 +6,7 @@ RETURNS TABLE(
     task_id integer,
     user_id integer,
     perm_type varchar(50)
-) AS $$
+) STABLE AS $$
 BEGIN
     -- Caller is supposed to guarantee user has permission to do this
     RETURN QUERY
