@@ -10,7 +10,7 @@ from psycopg import AsyncConnection
 from pydantic import BaseModel
 
 from todo_api.db import find_user, get_db_conn
-from todo_api.models import User
+from todo_api.schemas import User
 
 
 # to get a string like this run:

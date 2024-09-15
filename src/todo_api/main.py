@@ -31,7 +31,7 @@ from todo_api.db import (
     update_task,
     update_user,
 )
-from todo_api.models import (
+from todo_api.schemas import (
     NewPermission,
     NewTask,
     NewUser,

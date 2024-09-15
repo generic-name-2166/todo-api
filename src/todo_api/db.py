@@ -5,19 +5,24 @@ from typing import Any, Optional
 from psycopg import AsyncConnection, sql
 from psycopg.rows import dict_row, DictRow
 from psycopg_pool import AsyncConnectionPool
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-from todo_api.models import NewPermission, NewTask, Permission, PermType, Task, User
+from todo_api.schemas import NewPermission, NewTask, Permission, PermType, Task, User
 
 
 def contsruct_uri(user: str, password: str, host: str, port: int, db_name: str) -> str:
     return f"postgres://{user}:{password}@{host}:{port}/{db_name}"
 
 
+# Coalescing operator in case POSTGRES_HOST is set to an empty string
 HOST: str = os.environ.get("POSTGRES_HOST", None) or "localhost"
 CONNINFO: str = contsruct_uri("postgres", "postgres", HOST, 5432, "todo_api")
 CONN_ARGS: dict[str, Any] = {"row_factory": dict_row}
 
 db_pool = AsyncConnectionPool(conninfo=CONNINFO, open=False, kwargs=CONN_ARGS)
+engine = create_engine(CONNINFO)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 async def get_db_conn() -> AsyncGenerator[AsyncConnection]:
