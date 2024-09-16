@@ -10,7 +10,7 @@ Minimalistic RESTful API for task tracking
 docker compose up --build
 ```
 
-and go to http://localhost:8000
+and go to http://localhost:8000/docs
 
 ## Development
 

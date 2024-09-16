@@ -7,6 +7,7 @@ from typing import Annotated, Optional
 from fastapi import Body, Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from psycopg import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from todo_api.auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -17,26 +18,21 @@ from todo_api.auth import (
     Token,
 )
 from todo_api.db import (
-    add_permission,
     create_task,
     create_user,
-    db_pool,
-    find_permissions,
+    engine,
     find_task,
+    find_tasks_by_tag,
     get_db_conn,
     read_tasks,
-    remove_permission,
     remove_task,
     remove_user,
     update_task,
     update_user,
 )
 from todo_api.schemas import (
-    NewPermission,
     NewTask,
     NewUser,
-    Permission,
-    PermType,
     Task,
     User,
 )
@@ -50,11 +46,9 @@ if platform.system() == "Windows":
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    try:
-        await db_pool.open()
-        yield
-    finally:
-        await db_pool.close()
+    global engine
+    yield
+    await engine.dispose()
 
 
 app = FastAPI(lifespan=lifespan)  # type: ignore
@@ -82,9 +76,9 @@ async def login_for_access_token(
 @app.get("/tasks")
 async def get_tasks(
     user: Annotated[User, Depends(get_current_user)],
-    db: AsyncConnection = Depends(get_db_conn),
+    db: AsyncSession = Depends(get_db_conn),
 ) -> list[Task]:
-    """Lists task user is creator of or has read permissions for"""
+    """Lists task user is creator of"""
     return await read_tasks(db, user.id)
 
 
@@ -92,16 +86,25 @@ async def get_tasks(
 async def post_task(
     user: Annotated[User, Depends(get_current_user)],
     task: NewTask,
-    db: AsyncConnection = Depends(get_db_conn),
+    db: AsyncSession = Depends(get_db_conn),
 ):
     await create_task(db, user.id, task)
+
+
+@app.get("/tasks/search/{tag_name}")
+async def get_tasks_by_tag(
+    user: Annotated[User, Depends(get_current_user)],
+    tag_name: str,
+    db: AsyncSession = Depends(get_db_conn),
+) -> list[Task]:
+    return await find_tasks_by_tag(db, user.id, tag_name)
 
 
 @app.get("/tasks/{task_id}")
 async def get_task_by_id(
     user: Annotated[User, Depends(get_current_user)],
     task_id: int,
-    db: AsyncConnection = Depends(get_db_conn),
+    db: AsyncSession = Depends(get_db_conn),
 ) -> Task:
     result: Optional[Task] = await find_task(db, user.id, task_id)
     if result is None:
@@ -114,61 +117,18 @@ async def put_task(
     user: Annotated[User, Depends(get_current_user)],
     task_id: int,
     task: NewTask,
-    db: AsyncConnection = Depends(get_db_conn),
-):
-    result: bool = await update_task(db, user.id, task_id, task)
-    if not result:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+    db: AsyncSession = Depends(get_db_conn),
+) -> None:
+    await update_task(db, user.id, task_id, task)
 
 
 @app.delete("/tasks/{task_id}")
 async def delete_task(
     user: Annotated[User, Depends(get_current_user)],
     task_id: int,
-    db: AsyncConnection = Depends(get_db_conn),
-):
-    result: bool = await remove_task(db, user.id, task_id)
-    if not result:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
-
-
-@app.get("/tasks/{task_id}/permissions")
-async def get_task_permissions(
-    user: Annotated[User, Depends(get_current_user)],
-    task_id: int,
-    db: AsyncConnection = Depends(get_db_conn),
-) -> list[Permission]:
-    result: Optional[list[Permission]] = await find_permissions(db, user.id, task_id)
-    if result is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
-    return result
-
-
-@app.post("/tasks/{task_id}/permissions")
-async def post_task_permissions(
-    user: Annotated[User, Depends(get_current_user)],
-    task_id: int,
-    perm: NewPermission,
-    db: AsyncConnection = Depends(get_db_conn),
-):
-    result: bool = await add_permission(db, user.id, task_id, perm)
-    if not result:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
-
-
-@app.delete("/tasks/{task_id}/permissions")
-async def delete_task_permissions(
-    user: Annotated[User, Depends(get_current_user)],
-    task_id: int,
-    recepient_id: int,
-    perm_type: PermType,
-    db: AsyncConnection = Depends(get_db_conn),
-):
-    result: bool = await remove_permission(
-        db, user.id, task_id, recepient_id, perm_type
-    )
-    if not result:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
+    db: AsyncSession = Depends(get_db_conn),
+) -> None:
+    await remove_task(db, user.id, task_id)
 
 
 @app.get("/user")  # response_model=User)

@@ -1,4 +1,3 @@
-from enum import StrEnum
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -7,39 +6,40 @@ from pydantic import BaseModel, Field
 class NewUser(BaseModel):
     username: str
     password: str
+    telegram_id: Optional[int] = Field(default=None)
 
 
 class User(BaseModel):
     id: int
     username: str
     hashed_password: str
+    telegram_id: Optional[int] = Field(default=None)
+
+    class Config:
+        from_attributes = True
+
+
+class Tag(BaseModel):
+    id: int
+    task_id: int
+    name: str
+
+    class Config:
+        from_attributes = True
 
 
 class NewTask(BaseModel):
-    name: str
-    description: Optional[str] = Field(default=None)
-    finished: Optional[bool] = Field(default=None)
+    title: str
+    contents: Optional[str] = Field(default=None)
+    tags: list[str] = Field(default_factory=list)
 
 
 class Task(BaseModel):
     id: int
     creator_id: int
-    name: str
-    description: Optional[str] = Field(default=None)
-    finished: bool
+    title: str
+    contents: Optional[str] = Field(default=None)
+    tags: list[str]
 
-
-class PermType(StrEnum):
-    Read = "read"
-    Update = "update"
-
-
-class NewPermission(BaseModel):
-    recepient_id: int
-    perm_type: PermType
-
-
-class Permission(BaseModel):
-    task_id: int
-    user_id: int
-    perm_type: PermType
+    class Config:
+        from_attributes = True

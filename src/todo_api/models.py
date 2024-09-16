@@ -1,19 +1,20 @@
-from typing import Type, Any
+from datetime import datetime
 
-from sqlalchemy import Column, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import ForeignKey, Integer, Text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
-DbBase: Type[Any] = declarative_base()
+class DbBase(DeclarativeBase):
+    pass
 
 
 class DbUser(DbBase):
     __tablename__ = "user"
 
-    id = Column(Integer, primary_key=True)
-    hashed_password = Column(String, nullable=False)
-    telegram_id = Column(Integer, nullable=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str]
+    hashed_password: Mapped[str]
+    telegram_id = mapped_column(Integer, nullable=True)
 
     tasks = relationship("DbTask", back_populates="owner")
 
@@ -21,8 +22,9 @@ class DbUser(DbBase):
 class DbTag(DbBase):
     __tablename__ = "tags"
 
-    task_id = Column(Integer, ForeignKey("task.id"), nullable=False)
-    name = Column(String, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    task_id = mapped_column(Integer, ForeignKey("task.id"), nullable=False)
+    name: Mapped[str]
 
     task = relationship("DbTask", back_populates="tags")
 
@@ -30,10 +32,12 @@ class DbTag(DbBase):
 class DbTask(DbBase):
     __tablename__ = "task"
 
-    id = Column(Integer, primary_key=True)
-    title = Column(String, nullable=False)
-    contents = Column(Text, nullable=False)
-    owner_id = Column(Integer, ForeignKey("user.id"), nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str]
+    contents: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime]
+    last_edited_at: Mapped[datetime]
+    creator_id = mapped_column(Integer, ForeignKey("user.id"), nullable=False)
 
-    owner = relationship("DbUser", back_populates="tasks")
+    creator = relationship("DbUser", back_populates="tasks")
     tags = relationship("DbTag", back_populates="task")
