@@ -144,7 +144,9 @@ async def get_user(
 @app.post("/user")
 async def post_user(user: NewUser, db: AsyncSession = Depends(get_db_conn)):
     hashed_password: str = hash_password(user.password)
-    result: bool = await create_user(db, user.username, hashed_password, user.telegram_id)
+    result: bool = await create_user(
+        db, user.username, hashed_password, user.telegram_id
+    )
     if not result:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

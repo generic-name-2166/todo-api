@@ -3,7 +3,7 @@ from datetime import datetime
 import os
 from typing import Optional
 
-from sqlalchemy import delete, exists, insert, select, update
+from sqlalchemy import delete, exists, select, update
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import selectinload
@@ -57,11 +57,17 @@ async def username_exists(db: AsyncSession, username: str) -> bool:
     return await db.scalar(query) or False
 
 
-async def create_user(db: AsyncSession, username: str, hashed_password: str, telegram_id: Optional[int]) -> bool:
+async def create_user(
+    db: AsyncSession, username: str, hashed_password: str, telegram_id: Optional[int]
+) -> bool:
     """Returns whether the user can take this username"""
     if await username_exists(db, username):
         return False
-    db.add(DbUser(username=username, hashed_password=hashed_password, telegram_id=telegram_id))
+    db.add(
+        DbUser(
+            username=username, hashed_password=hashed_password, telegram_id=telegram_id
+        )
+    )
     return True
 
 
@@ -113,26 +119,21 @@ def unform_tag(task_id: int, tag_name: str) -> dict[str, str | int]:
 
 async def create_tags(db: AsyncSession, task_id: int, tag_names: list[str]) -> None:
     tags = list(map(lambda name: unform_tag(task_id, name), tag_names))
-    await db.execute(insert(DbTag), tags)
+    db.add_all(tags)
 
 
 async def create_task(db: AsyncSession, user_id: int, task: NewTask):
     now = datetime.now()
-    query = (
-        insert(DbTask)
-        .values(
-            title=task.title,
-            contents=task.contents,
-            created_at=now,
-            last_edited_at=now,
-            creator_id=user_id,
-        )
-        .returning(DbTask.id)
+    db_task = DbTask(
+        title=task.title,
+        contents=task.contents,
+        created_at=now,
+        last_edited_at=now,
+        creator_id=user_id,
     )
-    task_id: Optional[int] = await db.scalar(query)
-    if task_id is None:
-        raise BaseException("could not create a new task")
-    await create_tags(db, task_id, task.tags)
+    db.add(db_task)
+    await db.flush()
+    await create_tags(db, db_task.id, task.tags)
 
 
 async def find_task(db: AsyncSession, user_id: int, task_id: int) -> Optional[Task]:

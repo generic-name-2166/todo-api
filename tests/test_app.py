@@ -117,7 +117,7 @@ def test_creating_task(client: TestClient, mock_user: MockUser) -> None:
     create_mock_user(client, mock_user)
     token = login(client, mock_user)
     try:
-        body = {"name": "test"}
+        body = {"title": "test", "contents": ""}
         response = client.post("/tasks", json=body, headers=token)
         assert response.status_code == 200
     finally:
@@ -128,7 +128,7 @@ def test_getting_task(client: TestClient, mock_user: MockUser) -> None:
     create_mock_user(client, mock_user)
     token = login(client, mock_user)
     try:
-        body = {"name": "test"}
+        body = {"title": "test", "contents": ""}
         response = client.post("/tasks", json=body, headers=token)
         assert response.status_code == 200
 
@@ -148,7 +148,7 @@ def test_nonexistent_task(client: TestClient, mock_user: MockUser) -> None:
     create_mock_user(client, mock_user)
     token = login(client, mock_user)
     try:
-        body = {"name": "test"}
+        body = {"title": "test", "contents": ""}
         response = client.post("/tasks", json=body, headers=token)
         assert response.status_code == 200
 
@@ -161,7 +161,9 @@ def test_nonexistent_task(client: TestClient, mock_user: MockUser) -> None:
         assert response.status_code == 404
 
         response = client.put(
-            f"/tasks/{task_id + 1}", json={"name": "invalid"}, headers=token
+            f"/tasks/{task_id + 1}",
+            json={"title": "invalid", "contents": ""},
+            headers=token,
         )
         assert response.status_code == 404
 
@@ -175,7 +177,7 @@ def test_updating_task(client: TestClient, mock_user: MockUser) -> None:
     create_mock_user(client, mock_user)
     token = login(client, mock_user)
     try:
-        body = {"name": "test"}
+        body = {"title": "test", "contents": ""}
         response = client.post("/tasks", json=body, headers=token)
         assert response.status_code == 200
 
@@ -184,7 +186,7 @@ def test_updating_task(client: TestClient, mock_user: MockUser) -> None:
         task = response.json()[0]
         task_id = task["id"]
 
-        body = {"name": "test1"}
+        body = {"title": "test1", "contents": ""}
         response = client.put(f"/tasks/{task_id}", json=body, headers=token)
         assert response.status_code == 200
     finally:
@@ -195,7 +197,7 @@ def test_deleting_task(client: TestClient, mock_user: MockUser) -> None:
     create_mock_user(client, mock_user)
     token = login(client, mock_user)
     try:
-        body = {"name": "test"}
+        body = {"title": "test", "contents": ""}
         response = client.post("/tasks", json=body, headers=token)
         assert response.status_code == 200
 
