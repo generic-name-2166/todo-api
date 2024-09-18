@@ -119,7 +119,9 @@ async def put_task(
     task: NewTask,
     db: AsyncSession = Depends(get_db_conn),
 ) -> None:
-    await update_task(db, user.id, task_id, task)
+    result: bool = await update_task(db, user.id, task_id, task)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
 
 
 @app.delete("/tasks/{task_id}")
@@ -128,7 +130,9 @@ async def delete_task(
     task_id: int,
     db: AsyncSession = Depends(get_db_conn),
 ) -> None:
-    await remove_task(db, user.id, task_id)
+    result: bool = await remove_task(db, user.id, task_id)
+    if not result:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not Found")
 
 
 @app.get("/user")  # response_model=User)

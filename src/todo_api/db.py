@@ -6,7 +6,7 @@ from typing import Any, Optional
 from psycopg import AsyncConnection, sql
 from psycopg.rows import dict_row, DictRow
 from psycopg_pool import AsyncConnectionPool
-from sqlalchemy import delete, insert, select, update
+from sqlalchemy import delete, exists, insert, select, update
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import selectinload
@@ -156,14 +156,25 @@ def unform_task(task: NewTask) -> dict[str, str | Optional[str] | datetime]:
 
 
 async def delete_tags(db: AsyncSession, task_id: int) -> None:
-    # No authorization in business logic
     query = delete(DbTag).where(DbTag.task_id == task_id)
     await db.execute(query)
 
 
+async def is_authorized(db: AsyncSession, user_id: int, task_id: int) -> bool:
+    query = (
+        exists(DbTask)
+        .where(DbTask.id == task_id, DbTask.creator_id == user_id)
+        .select()
+    )
+    return await db.scalar(query) or False
+
+
 async def update_task(
     db: AsyncSession, user_id: int, task_id: int, task: NewTask
-) -> None:
+) -> bool:
+    """Returns whether user is authorized to update the task"""
+    if not await is_authorized(db, user_id, task_id):
+        return False
     query = (
         update(DbTask)
         .where(DbTask.id == task_id, DbTask.creator_id == user_id)
@@ -172,12 +183,17 @@ async def update_task(
     await db.execute(query)
     await delete_tags(db, task_id)
     await create_tags(db, task_id, task.tags)
+    return True
 
 
-async def remove_task(db: AsyncSession, user_id: int, task_id: int) -> None:
+async def remove_task(db: AsyncSession, user_id: int, task_id: int) -> bool:
+    """Returns whether user is authorized to delete the task"""
+    if not await is_authorized(db, user_id, task_id):
+        return False
     await delete_tags(db, task_id)
     query = delete(DbTask).where(DbTask.creator_id == user_id, DbTask.id == task_id)
     await db.execute(query)
+    return True
 
 
 async def find_tasks_by_tag(
