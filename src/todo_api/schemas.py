@@ -15,8 +15,7 @@ class User(BaseModel):
     hashed_password: str
     telegram_id: Optional[int] = Field(default=None)
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class Tag(BaseModel):
@@ -24,8 +23,7 @@ class Tag(BaseModel):
     task_id: int
     name: str
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class NewTask(BaseModel):
@@ -41,5 +39,4 @@ class Task(BaseModel):
     contents: Optional[str] = Field(default=None)
     tags: list[str]
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
