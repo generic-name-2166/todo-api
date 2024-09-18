@@ -4,7 +4,7 @@ services:
     pull_policy: never
     container_name: todo-api
     build:
-      context: ./
+      context: ./api/
       dockerfile: Dockerfile
       target: runner
     ports:

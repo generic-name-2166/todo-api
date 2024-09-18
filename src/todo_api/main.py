@@ -29,6 +29,7 @@ from todo_api.db import (
     update_task,
     update_user,
 )
+from todo_api.models import DbBase
 from todo_api.schemas import (
     NewTask,
     NewUser,
@@ -46,7 +47,9 @@ if platform.system() == "Windows":
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     global engine
-    yield
+    async with engine.begin() as conn:
+        await conn.run_sync(DbBase.metadata.create_all)
+        yield
     await engine.dispose()
 
 

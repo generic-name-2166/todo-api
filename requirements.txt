@@ -1,5 +1,5 @@
 fastapi[standard] == 0.114.2
 pyjwt == 2.9.0
-passlib[bcrypt] == 1.7.4
+bcrypt == 4.2.0
 psycopg[binary, pool] == 3.2.2
 SQLAlchemy[asyncio] == 2.0.34

@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS builder
+FROM python:3.12-alpine AS builder
 
 WORKDIR /app
 
@@ -6,7 +6,7 @@ COPY requirements.txt ./
 RUN pip wheel --no-cache-dir --wheel-dir wheels -r requirements.txt
 
 
-FROM python:3.12-slim AS runner
+FROM python:3.12-alpine AS runner
 
 WORKDIR /app
 
