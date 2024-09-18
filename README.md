@@ -36,7 +36,7 @@ pytest  # --cov-report html  # For HTML coverage report
 This project uses the following dependencies
 - `FastAPI`
 - `pyjwt`
-- `passlib`
+- `bcrypt`
 - `psycopg`
 
 - `ruff`

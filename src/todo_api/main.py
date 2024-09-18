@@ -14,7 +14,7 @@ from todo_api.auth import (
     authenticate_user,
     create_access_token,
     get_current_user,
-    get_password_hash,
+    hash_password,
     Token,
 )
 from todo_api.db import (
@@ -144,7 +144,7 @@ async def get_user(
 
 @app.post("/user")
 async def post_user(user: NewUser, db: AsyncConnection = Depends(get_db_conn)):
-    hashed_password: str = get_password_hash(user.password)
+    hashed_password: str = hash_password(user.password)
     result: bool = await create_user(db, user.username, hashed_password)
     if not result:
         raise HTTPException(
