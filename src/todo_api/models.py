@@ -16,7 +16,7 @@ class DbUser(DbBase):
     hashed_password: Mapped[str]
     telegram_id = mapped_column(Integer, nullable=True)
 
-    tasks = relationship("DbTask", back_populates="owner")
+    tasks = relationship("DbTask", back_populates="creator")
 
 
 class DbTag(DbBase):

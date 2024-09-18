@@ -37,6 +37,7 @@ This project uses the following dependencies
 - `FastAPI`
 - `pyjwt`
 - `bcrypt`
+- `SQLAlchemy`
 - `psycopg`
 
 - `ruff`

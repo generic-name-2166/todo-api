@@ -27,7 +27,7 @@ def test_unauthorized(client: TestClient, mock_user: MockUser) -> None:
 def login(client: TestClient, mock_user: MockUser) -> dict[str, str]:
     """Returns authorization header"""
     response = client.post("/token", data=mock_user)
-    assert response.status_code == 200
+    assert response.status_code == 200, response.json()
     auth = response.json()
     assert auth["token_type"] == "bearer"
     access_token: str = auth["access_token"]

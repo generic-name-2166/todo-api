@@ -1,17 +1,14 @@
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Sequence
 from datetime import datetime
 import os
-from typing import Any, Optional
+from typing import Optional
 
-from psycopg import AsyncConnection, sql
-from psycopg.rows import dict_row, DictRow
-from psycopg_pool import AsyncConnectionPool
 from sqlalchemy import delete, exists, insert, select, update
 from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import selectinload
 
-from todo_api.models import DbTag, DbTask
+from todo_api.models import DbTag, DbTask, DbUser
 from todo_api.schemas import NewTask, Task, User
 
 
@@ -22,9 +19,7 @@ def contsruct_uri(user: str, password: str, host: str, port: int, db_name: str) 
 # Coalescing operator in case POSTGRES_HOST is set to an empty string
 HOST: str = os.environ.get("POSTGRES_HOST", None) or "localhost"
 CONNINFO: str = contsruct_uri("postgres", "postgres", HOST, 5432, "todo_api")
-CONN_ARGS: dict[str, Any] = {"row_factory": dict_row}
 
-db_pool = AsyncConnectionPool(conninfo=CONNINFO, open=False, kwargs=CONN_ARGS)
 engine = create_async_engine(CONNINFO)
 SessionLocal = async_sessionmaker(
     autocommit=False, autoflush=False, bind=engine, expire_on_commit=False
@@ -33,7 +28,7 @@ SessionLocal = async_sessionmaker(
 
 async def get_db_conn() -> AsyncGenerator[AsyncSession]:
     global SessionLocal
-    async with SessionLocal() as session:
+    async with SessionLocal() as session, session.begin():
         yield session
 
 
@@ -44,43 +39,49 @@ def extract_one[T](row: Result[tuple[T]]) -> Optional[T]:
     return res[0]
 
 
-async def find_user(db: AsyncConnection, username: str) -> Optional[User]:
-    query: sql.Composed = sql.SQL("SELECT * FROM get_current_user({username})").format(
-        username=username
-    )
-    cursor = await db.execute(query)
-    user_data: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
-    if user_data is None:
+async def find_user(db: AsyncSession, username: str) -> Optional[User]:
+    query = select(DbUser).where(DbUser.username == username)
+    result: Optional[DbUser] = await db.scalar(query)
+    if result is None:
         return None
     return User(
-        id=user_data["id"],
-        username=user_data["username"],
-        hashed_password=user_data["hashed_password"],
+        id=result.id,
+        username=result.username,
+        hashed_password=result.hashed_password,
+        telegram_id=result.telegram_id,
     )
 
 
-async def create_user(db: AsyncConnection, username: str, hashed_password: str) -> bool:
-    query: sql.Composed = sql.SQL(
-        "SELECT create_user({username}, {hashed_password})"
-    ).format(username=username, hashed_password=hashed_password)
-    cursor = await db.execute(query)
-    result: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
-    return result is not None and result["create_user"]
+async def username_exists(db: AsyncSession, username: str) -> bool:
+    query = exists().where(DbUser.username == username).select()
+    return await db.scalar(query) or False
 
 
-async def update_user(db: AsyncConnection, user_id: int, username: str) -> bool:
-    query: sql.Composed = sql.SQL("SELECT update_user({user_id}, {username})").format(
-        user_id=user_id, username=username
+async def create_user(db: AsyncSession, username: str, hashed_password: str, telegram_id: Optional[int]) -> bool:
+    """Returns whether the user can take this username"""
+    if await username_exists(db, username):
+        return False
+    db.add(DbUser(username=username, hashed_password=hashed_password, telegram_id=telegram_id))
+    return True
+
+
+async def update_user(db: AsyncSession, user_id: int, username: str) -> bool:
+    """Returns whether the user can take this username"""
+    if await username_exists(db, username):
+        return False
+    query = update(DbUser).where(DbUser.id == user_id).values(username=username)
+    await db.execute(query)
+    return True
+
+
+async def remove_user(db: AsyncSession, user_id: int) -> None:
+    tasks_query = (
+        delete(DbTask).where(DbTask.creator_id == user_id).returning(DbTask.id)
     )
-    cursor = await db.execute(query)
-    result: Optional[DictRow] = await cursor.fetchone()  # type: ignore  type doesn't see dict_row factory
-    return result is not None and result["update_user"]
-
-
-async def remove_user(db: AsyncConnection, user_id: int):
-    query: sql.Composed = sql.SQL("SELECT remove_user({user_id})").format(
-        user_id=user_id
-    )
+    deleted_tasks: Sequence[int] = (await db.scalars(tasks_query)).all()
+    tags_query = delete(DbTag).where(DbTag.task_id.in_(deleted_tasks))
+    await db.execute(tags_query)
+    query = delete(DbUser).where(DbUser.id == user_id)
     await db.execute(query)
 
 
@@ -117,18 +118,18 @@ async def create_tags(db: AsyncSession, task_id: int, tag_names: list[str]) -> N
 
 async def create_task(db: AsyncSession, user_id: int, task: NewTask):
     now = datetime.now()
-    task_id: Optional[int] = await db.scalar(
-        insert(DbTask).returning(DbTask.id),
-        [
-            {
-                "title": task.title,
-                "contents": task.contents,
-                "created_at": now,
-                "last_edited_at": now,
-                "creator_id": user_id,
-            }
-        ],
+    query = (
+        insert(DbTask)
+        .values(
+            title=task.title,
+            contents=task.contents,
+            created_at=now,
+            last_edited_at=now,
+            creator_id=user_id,
+        )
+        .returning(DbTask.id)
     )
+    task_id: Optional[int] = await db.scalar(query)
     if task_id is None:
         raise BaseException("could not create a new task")
     await create_tags(db, task_id, task.tags)
@@ -155,7 +156,7 @@ def unform_task(task: NewTask) -> dict[str, str | Optional[str] | datetime]:
     }
 
 
-async def delete_tags(db: AsyncSession, task_id: int) -> None:
+async def remove_tags(db: AsyncSession, task_id: int) -> None:
     query = delete(DbTag).where(DbTag.task_id == task_id)
     await db.execute(query)
 
@@ -181,7 +182,7 @@ async def update_task(
         .values(**unform_task(task))
     )
     await db.execute(query)
-    await delete_tags(db, task_id)
+    await remove_tags(db, task_id)
     await create_tags(db, task_id, task.tags)
     return True
 
@@ -190,7 +191,7 @@ async def remove_task(db: AsyncSession, user_id: int, task_id: int) -> bool:
     """Returns whether user is authorized to delete the task"""
     if not await is_authorized(db, user_id, task_id):
         return False
-    await delete_tags(db, task_id)
+    await remove_tags(db, task_id)
     query = delete(DbTask).where(DbTask.creator_id == user_id, DbTask.id == task_id)
     await db.execute(query)
     return True

@@ -6,7 +6,6 @@ from typing import Annotated, Optional
 
 from fastapi import Body, Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from psycopg import AsyncConnection
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from todo_api.auth import (
@@ -57,7 +56,7 @@ app = FastAPI(lifespan=lifespan)  # type: ignore
 @app.post("/token")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: AsyncConnection = Depends(get_db_conn),
+    db: AsyncSession = Depends(get_db_conn),
 ) -> Token:
     user = await authenticate_user(db, form_data.username, form_data.password)
     if user is None:
@@ -143,9 +142,9 @@ async def get_user(
 
 
 @app.post("/user")
-async def post_user(user: NewUser, db: AsyncConnection = Depends(get_db_conn)):
+async def post_user(user: NewUser, db: AsyncSession = Depends(get_db_conn)):
     hashed_password: str = hash_password(user.password)
-    result: bool = await create_user(db, user.username, hashed_password)
+    result: bool = await create_user(db, user.username, hashed_password, user.telegram_id)
     if not result:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -157,7 +156,7 @@ async def post_user(user: NewUser, db: AsyncConnection = Depends(get_db_conn)):
 async def put_user(
     current: Annotated[User, Depends(get_current_user)],
     username: Annotated[str, Body()],
-    db: AsyncConnection = Depends(get_db_conn),
+    db: AsyncSession = Depends(get_db_conn),
 ):
     """
     Update username of current user
@@ -175,7 +174,7 @@ async def put_user(
 @app.delete("/user")
 async def delete_user(
     user: Annotated[User, Depends(get_current_user)],
-    db: AsyncConnection = Depends(get_db_conn),
+    db: AsyncSession = Depends(get_db_conn),
 ):
     """
     Deletes currently logged in user

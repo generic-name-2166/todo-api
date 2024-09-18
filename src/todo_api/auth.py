@@ -6,8 +6,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import jwt
 from jwt.exceptions import InvalidTokenError
-from psycopg import AsyncConnection
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from todo_api.db import find_user, get_db_conn
 from todo_api.schemas import User
@@ -42,7 +42,7 @@ def hash_password(password: str) -> str:
 
 
 async def authenticate_user(
-    db: AsyncConnection, username: str, password: str
+    db: AsyncSession, username: str, password: str
 ) -> Optional[User]:
     user: Optional[User] = await find_user(db, username)
     if user is None:
@@ -67,7 +67,7 @@ def create_access_token(
 
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-    db: AsyncConnection = Depends(get_db_conn),
+    db: AsyncSession = Depends(get_db_conn),
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
