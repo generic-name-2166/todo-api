@@ -108,11 +108,13 @@ async def test_duplicate_name(client: AsyncClient, mock_user: MockUser) -> None:
 async def test_duplicate_name_update(client: AsyncClient, mock_user: MockUser) -> None:
     await create_mock_user(client, mock_user)
     token = await login(client, mock_user)
-
-    response = await client.put("/user", json="johndoe", headers=token)
-    assert response.status_code == 409
-
-    await delete_mock_user(client, token)
+    try:
+        # Requres a johndoe user to be already in the database
+        # TODO add this as a before all
+        response = await client.put("/user", json="johndoe", headers=token)
+        assert response.status_code == 409
+    finally:
+        await delete_mock_user(client, token)
 
 
 @pytest.mark.asyncio
@@ -227,5 +229,35 @@ async def test_deleting_task(client: AsyncClient, mock_user: MockUser) -> None:
 
         response = await client.delete(f"/tasks/{task_id}", headers=token)
         assert response.status_code == 200
+    finally:
+        await delete_mock_user(client, token)
+
+
+type JsonTag = dict[str, int | str]
+type JsonTask = dict[str, int | str | list[JsonTag]]
+type JsonNewTask = dict[str, int | str | list[str]]
+
+
+@pytest.mark.asyncio
+async def test_searching_task_by_tag(client: AsyncClient, mock_user: MockUser) -> None:
+    await create_mock_user(client, mock_user)
+    token = await login(client, mock_user)
+    try:
+        body: JsonNewTask = {"title": "test", "contents": "", "tags": ["Tag"]}
+        response = await client.post("/tasks", json=body, headers=token)
+        assert response.status_code == 200
+
+        response = await client.get("/tasks/search/A", headers=token)
+        assert response.status_code == 200
+        tasks: list[JsonTask] = response.json()
+        assert isinstance(tasks, list)
+        assert len(tasks) == 0
+
+        response = await client.get("/tasks/search/T", headers=token)
+        assert response.status_code == 200
+        tasks: list[JsonTask] = response.json()
+        assert isinstance(tasks, list)
+        assert len(tasks) == 1
+        assert tasks[0]["title"] == "test"
     finally:
         await delete_mock_user(client, token)

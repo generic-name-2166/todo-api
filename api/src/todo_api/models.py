@@ -16,14 +16,21 @@ class DbUser(DbBase):
     hashed_password: Mapped[str]
     telegram_id = mapped_column(Integer, nullable=True)
 
-    tasks = relationship("DbTask", back_populates="creator")
+    tasks = relationship(
+        "DbTask",
+        back_populates="creator",
+        cascade="all, delete, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class DbTag(DbBase):
     __tablename__ = "tags"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    task_id = mapped_column(Integer, ForeignKey("task.id"), nullable=False)
+    task_id = mapped_column(
+        Integer, ForeignKey("task.id", ondelete="CASCADE"), nullable=False
+    )
     name: Mapped[str]
 
     task = relationship("DbTask", back_populates="tags")
@@ -37,7 +44,14 @@ class DbTask(DbBase):
     contents: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime]
     last_edited_at: Mapped[datetime]
-    creator_id = mapped_column(Integer, ForeignKey("user.id"), nullable=False)
+    creator_id = mapped_column(
+        Integer, ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
 
     creator = relationship("DbUser", back_populates="tasks")
-    tags = relationship("DbTag", back_populates="task")
+    tags = relationship(
+        "DbTag",
+        back_populates="task",
+        cascade="all, delete, delete-orphan",
+        passive_deletes=True,
+    )

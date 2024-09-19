@@ -49,7 +49,7 @@ async def lifespan(_app: FastAPI):
     global engine
     async with engine.begin() as conn:
         await conn.run_sync(DbBase.metadata.create_all)
-        yield
+    yield
     await engine.dispose()
 
 

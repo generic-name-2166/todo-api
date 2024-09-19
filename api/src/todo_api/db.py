@@ -1,10 +1,9 @@
-from collections.abc import AsyncGenerator, Sequence
+from collections.abc import AsyncGenerator
 from datetime import datetime
 import os
 from typing import Optional
 
 from sqlalchemy import delete, exists, select, update
-from sqlalchemy.engine import Result
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -30,13 +29,6 @@ async def get_db_conn() -> AsyncGenerator[AsyncSession]:
     global SessionLocal
     async with SessionLocal() as session, session.begin():
         yield session
-
-
-def extract_one[T](row: Result[tuple[T]]) -> Optional[T]:
-    res = row.one_or_none()
-    if res is None:
-        return None
-    return res[0]
 
 
 async def find_user(db: AsyncSession, username: str) -> Optional[User]:
@@ -81,12 +73,6 @@ async def update_user(db: AsyncSession, user_id: int, username: str) -> bool:
 
 
 async def remove_user(db: AsyncSession, user_id: int) -> None:
-    tasks_query = (
-        delete(DbTask).where(DbTask.creator_id == user_id).returning(DbTask.id)
-    )
-    deleted_tasks: Sequence[int] = (await db.scalars(tasks_query)).all()
-    tags_query = delete(DbTag).where(DbTag.task_id.in_(deleted_tasks))
-    await db.execute(tags_query)
     query = delete(DbUser).where(DbUser.id == user_id)
     await db.execute(query)
 
@@ -97,7 +83,7 @@ def form_task(db_task: DbTask) -> Task:
         creator_id=db_task.creator_id,
         title=db_task.title,
         contents=db_task.contents,
-        tags=db_task.tags,
+        tags=list(map(lambda x: x.name, db_task.tags)),
     )
 
 
@@ -110,11 +96,11 @@ async def read_tasks(db: AsyncSession, user_id: int) -> list[Task]:
     return list(map(form_task, (await db.scalars(query)).all()))
 
 
-def unform_tag(task_id: int, tag_name: str) -> dict[str, str | int]:
-    return {
-        "task_id": task_id,
-        "name": tag_name,
-    }
+def unform_tag(task_id: int, tag_name: str) -> DbTag:
+    return DbTag(
+        task_id=task_id,
+        name=tag_name,
+    )
 
 
 async def create_tags(db: AsyncSession, task_id: int, tag_names: list[str]) -> None:
@@ -192,8 +178,7 @@ async def remove_task(db: AsyncSession, user_id: int, task_id: int) -> bool:
     """Returns whether user is authorized to delete the task"""
     if not await is_authorized(db, user_id, task_id):
         return False
-    await remove_tags(db, task_id)
-    query = delete(DbTask).where(DbTask.creator_id == user_id, DbTask.id == task_id)
+    query = delete(DbTask).where(DbTask.id == task_id)
     await db.execute(query)
     return True
 
@@ -201,4 +186,13 @@ async def remove_task(db: AsyncSession, user_id: int, task_id: int) -> bool:
 async def find_tasks_by_tag(
     db: AsyncSession, user_id: int, tag_name: str
 ) -> list[Task]:
-    raise NotImplementedError()
+    """Returns tasks that have a tag that starts with `tag_name`"""
+    query = (
+        select(DbTask)
+        .options(selectinload(DbTask.tags))
+        .where(
+            DbTask.creator_id == user_id,
+            DbTask.tags.any(DbTag.name.startswith(tag_name)),
+        )
+    )
+    return list(map(form_task, (await db.scalars(query)).all()))
