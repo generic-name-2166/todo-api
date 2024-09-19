@@ -14,9 +14,12 @@ and go to http://localhost:8000/docs
 
 ## Development
 
-Prepare the database with applying scripts in migration folder
+Prepare the database with applying scripts in migrations folder
+
+### Set up the API
 
 ```bash
+cd api
 python -m venv venv
 venv\Scripts\Activate.ps1  # venv/bin/activate
 pip install -e ".[testing]"
@@ -33,7 +36,7 @@ pytest  # --cov-report html  # For HTML coverage report
 
 # Notice
 
-This project uses the following dependencies
+This project has the following dependencies
 - `FastAPI`
 - `pyjwt`
 - `bcrypt`
