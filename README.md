@@ -46,3 +46,6 @@ This project has the following dependencies
 - `ruff`
 - `pytest`
 - `pytest-cov`
+- `pytest-asyncio`
+- `httpx`
+- `asgi-lifespan`

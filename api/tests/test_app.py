@@ -1,4 +1,5 @@
-from fastapi.testclient import TestClient
+from asgi_lifespan import LifespanManager
+from httpx import ASGITransport, AsyncClient
 import pytest
 
 from todo_api.main import app
@@ -8,8 +9,14 @@ type MockUser = dict[str, str]
 
 
 @pytest.fixture(scope="module")
-def client():
-    with TestClient(app) as c:
+async def client():
+    async with (
+        LifespanManager(app) as manager,
+        AsyncClient(
+            transport=ASGITransport(app=manager.app), base_url="http://localhost:8000"
+        ) as c,
+    ):
+        assert isinstance(c, AsyncClient)
         yield c
 
 
@@ -18,15 +25,16 @@ def mock_user() -> MockUser:
     return {"username": "username", "password": "password"}
 
 
-def test_unauthorized(client: TestClient, mock_user: MockUser) -> None:
-    response = client.get("/user")
+@pytest.mark.asyncio
+async def test_unauthorized(client: AsyncClient) -> None:
+    assert isinstance(client, AsyncClient)
+    response = await client.get("/user")
     assert response.status_code == 401
-    response = client.post("/token", data=mock_user)
 
 
-def login(client: TestClient, mock_user: MockUser) -> dict[str, str]:
+async def login(client: AsyncClient, mock_user: MockUser) -> dict[str, str]:
     """Returns authorization header"""
-    response = client.post("/token", data=mock_user)
+    response = await client.post("/token", data=mock_user)
     assert response.status_code == 200, response.json()
     auth = response.json()
     assert auth["token_type"] == "bearer"
@@ -37,176 +45,187 @@ def login(client: TestClient, mock_user: MockUser) -> dict[str, str]:
     return headers
 
 
-def create_mock_user(client: TestClient, mock_user: MockUser) -> None:
-    response = client.post("/user", json=mock_user)
+async def create_mock_user(client: AsyncClient, mock_user: MockUser) -> None:
+    response = await client.post("/user", json=mock_user)
     assert response.status_code == 200
 
 
-def delete_mock_user(client: TestClient, headers: dict[str, str]) -> None:
-    response = client.delete("/user", headers=headers)
+async def delete_mock_user(client: AsyncClient, headers: dict[str, str]) -> None:
+    response = await client.delete("/user", headers=headers)
     assert response.status_code == 200
 
 
-def test_user(client: TestClient, mock_user: MockUser) -> None:
-    create_mock_user(client, mock_user)
-    token = login(client, mock_user)
+@pytest.mark.asyncio
+async def test_user(client: AsyncClient, mock_user: MockUser) -> None:
+    await create_mock_user(client, mock_user)
+    token = await login(client, mock_user)
 
-    response = client.get("/user", headers=token)
+    response = await client.get("/user", headers=token)
     assert response.status_code == 200
     user = response.json()
     assert user["username"] == mock_user["username"]
 
-    delete_mock_user(client, token)
+    await delete_mock_user(client, token)
 
 
-def test_invalid_token(client: TestClient, mock_user: MockUser) -> None:
-    create_mock_user(client, mock_user)
-    token = login(client, mock_user)
+@pytest.mark.asyncio
+async def test_invalid_token(client: AsyncClient, mock_user: MockUser) -> None:
+    await create_mock_user(client, mock_user)
+    token = await login(client, mock_user)
 
     headers = {"Authorization": "Bearer invalid"}
-    response = client.get("/user", headers=headers)
+    response = await client.get("/user", headers=headers)
     assert response.status_code == 401
 
-    delete_mock_user(client, token)
+    await delete_mock_user(client, token)
 
 
-def test_invalid_password(client: TestClient, mock_user: MockUser) -> None:
-    create_mock_user(client, mock_user)
-    token = login(client, mock_user)
+@pytest.mark.asyncio
+async def test_invalid_password(client: AsyncClient, mock_user: MockUser) -> None:
+    await create_mock_user(client, mock_user)
+    token = await login(client, mock_user)
 
     invalid = mock_user.copy()
     invalid["password"] = "invalid"
-    response = client.post("/token", data=invalid)
+    response = await client.post("/token", data=invalid)
     assert response.status_code == 401
 
-    delete_mock_user(client, token)
+    await delete_mock_user(client, token)
 
 
-def test_duplicate_name(client: TestClient, mock_user: MockUser) -> None:
-    create_mock_user(client, mock_user)
-    token = login(client, mock_user)
+@pytest.mark.asyncio
+async def test_duplicate_name(client: AsyncClient, mock_user: MockUser) -> None:
+    await create_mock_user(client, mock_user)
+    token = await login(client, mock_user)
 
-    response = client.post("/user", json=mock_user)
+    response = await client.post("/user", json=mock_user)
     assert response.status_code == 409
 
-    delete_mock_user(client, token)
+    await delete_mock_user(client, token)
 
 
-def test_duplicate_name_update(client: TestClient, mock_user: MockUser) -> None:
-    create_mock_user(client, mock_user)
-    token = login(client, mock_user)
+@pytest.mark.asyncio
+async def test_duplicate_name_update(client: AsyncClient, mock_user: MockUser) -> None:
+    await create_mock_user(client, mock_user)
+    token = await login(client, mock_user)
 
-    response = client.put("/user", json="johndoe", headers=token)
+    response = await client.put("/user", json="johndoe", headers=token)
     assert response.status_code == 409
 
-    delete_mock_user(client, token)
+    await delete_mock_user(client, token)
 
 
-def test_tasks(client: TestClient, mock_user: MockUser) -> None:
-    create_mock_user(client, mock_user)
-    token = login(client, mock_user)
+@pytest.mark.asyncio
+async def test_tasks(client: AsyncClient, mock_user: MockUser) -> None:
+    await create_mock_user(client, mock_user)
+    token = await login(client, mock_user)
     try:
-        response = client.get("/tasks", headers=token)
+        response = await client.get("/tasks", headers=token)
         assert response.status_code == 200
         assert response.json() == []
     finally:
-        delete_mock_user(client, token)
+        await delete_mock_user(client, token)
 
 
-def test_creating_task(client: TestClient, mock_user: MockUser) -> None:
-    create_mock_user(client, mock_user)
-    token = login(client, mock_user)
+@pytest.mark.asyncio
+async def test_creating_task(client: AsyncClient, mock_user: MockUser) -> None:
+    await create_mock_user(client, mock_user)
+    token = await login(client, mock_user)
     try:
         body = {"title": "test", "contents": ""}
-        response = client.post("/tasks", json=body, headers=token)
+        response = await client.post("/tasks", json=body, headers=token)
         assert response.status_code == 200
     finally:
-        delete_mock_user(client, token)
+        await delete_mock_user(client, token)
 
 
-def test_getting_task(client: TestClient, mock_user: MockUser) -> None:
-    create_mock_user(client, mock_user)
-    token = login(client, mock_user)
+@pytest.mark.asyncio
+async def test_getting_task(client: AsyncClient, mock_user: MockUser) -> None:
+    await create_mock_user(client, mock_user)
+    token = await login(client, mock_user)
     try:
         body = {"title": "test", "contents": ""}
-        response = client.post("/tasks", json=body, headers=token)
+        response = await client.post("/tasks", json=body, headers=token)
         assert response.status_code == 200
 
-        response = client.get("/tasks", headers=token)
+        response = await client.get("/tasks", headers=token)
         assert response.status_code == 200
         task = response.json()[0]
         task_id = task["id"]
 
-        response = client.get(f"/tasks/{task_id}", headers=token)
+        response = await client.get(f"/tasks/{task_id}", headers=token)
         assert response.status_code == 200
         assert task == response.json()
     finally:
-        delete_mock_user(client, token)
+        await delete_mock_user(client, token)
 
 
-def test_nonexistent_task(client: TestClient, mock_user: MockUser) -> None:
-    create_mock_user(client, mock_user)
-    token = login(client, mock_user)
+@pytest.mark.asyncio
+async def test_nonexistent_task(client: AsyncClient, mock_user: MockUser) -> None:
+    await create_mock_user(client, mock_user)
+    token = await login(client, mock_user)
     try:
         body = {"title": "test", "contents": ""}
-        response = client.post("/tasks", json=body, headers=token)
+        response = await client.post("/tasks", json=body, headers=token)
         assert response.status_code == 200
 
-        response = client.get("/tasks", headers=token)
+        response = await client.get("/tasks", headers=token)
         assert response.status_code == 200
         task = response.json()[0]
         task_id = task["id"]
 
-        response = client.get(f"/tasks/{task_id + 1}", headers=token)
+        response = await client.get(f"/tasks/{task_id + 1}", headers=token)
         assert response.status_code == 404
 
-        response = client.put(
+        response = await client.put(
             f"/tasks/{task_id + 1}",
             json={"title": "invalid", "contents": ""},
             headers=token,
         )
         assert response.status_code == 404
 
-        response = client.delete(f"/tasks/{task_id + 1}", headers=token)
+        response = await client.delete(f"/tasks/{task_id + 1}", headers=token)
         assert response.status_code == 404
     finally:
-        delete_mock_user(client, token)
+        await delete_mock_user(client, token)
 
 
-def test_updating_task(client: TestClient, mock_user: MockUser) -> None:
-    create_mock_user(client, mock_user)
-    token = login(client, mock_user)
+@pytest.mark.asyncio
+async def test_updating_task(client: AsyncClient, mock_user: MockUser) -> None:
+    await create_mock_user(client, mock_user)
+    token = await login(client, mock_user)
     try:
         body = {"title": "test", "contents": ""}
-        response = client.post("/tasks", json=body, headers=token)
+        response = await client.post("/tasks", json=body, headers=token)
         assert response.status_code == 200
 
-        response = client.get("/tasks", headers=token)
+        response = await client.get("/tasks", headers=token)
         assert response.status_code == 200
         task = response.json()[0]
         task_id = task["id"]
 
         body = {"title": "test1", "contents": ""}
-        response = client.put(f"/tasks/{task_id}", json=body, headers=token)
+        response = await client.put(f"/tasks/{task_id}", json=body, headers=token)
         assert response.status_code == 200
     finally:
-        delete_mock_user(client, token)
+        await delete_mock_user(client, token)
 
 
-def test_deleting_task(client: TestClient, mock_user: MockUser) -> None:
-    create_mock_user(client, mock_user)
-    token = login(client, mock_user)
+@pytest.mark.asyncio
+async def test_deleting_task(client: AsyncClient, mock_user: MockUser) -> None:
+    await create_mock_user(client, mock_user)
+    token = await login(client, mock_user)
     try:
         body = {"title": "test", "contents": ""}
-        response = client.post("/tasks", json=body, headers=token)
+        response = await client.post("/tasks", json=body, headers=token)
         assert response.status_code == 200
 
-        response = client.get("/tasks", headers=token)
+        response = await client.get("/tasks", headers=token)
         assert response.status_code == 200
         task = response.json()[0]
         task_id = task["id"]
 
-        response = client.delete(f"/tasks/{task_id}", headers=token)
+        response = await client.delete(f"/tasks/{task_id}", headers=token)
         assert response.status_code == 200
     finally:
-        delete_mock_user(client, token)
+        await delete_mock_user(client, token)
