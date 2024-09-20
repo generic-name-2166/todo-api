@@ -13,7 +13,8 @@ async def client():
     async with (
         LifespanManager(app) as manager,
         AsyncClient(
-            transport=ASGITransport(app=manager.app), base_url="http://localhost:8000"
+            transport=ASGITransport(app=manager.app),  # type: ignore
+            base_url="http://localhost:8000"
         ) as c,
     ):
         assert isinstance(c, AsyncClient)
@@ -53,6 +54,17 @@ async def create_mock_user(client: AsyncClient, mock_user: MockUser) -> None:
 async def delete_mock_user(client: AsyncClient, headers: dict[str, str]) -> None:
     response = await client.delete("/user", headers=headers)
     assert response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_creating_user(client: AsyncClient, mock_user: MockUser) -> None:
+    # This test has a side effect of creating `johndoe` user if one doesn't exist
+    assert isinstance(client, AsyncClient)
+    result = await client.post("/user", json={
+        "username": "johndoe",
+        "password": "a"
+    })
+    assert result.status_code == 200 or result.status_code == 409
 
 
 @pytest.mark.asyncio
@@ -110,11 +122,28 @@ async def test_duplicate_name_update(client: AsyncClient, mock_user: MockUser) -
     token = await login(client, mock_user)
     try:
         # Requres a johndoe user to be already in the database
-        # TODO add this as a before all
+        # See `test_creating_user` test
         response = await client.put("/user", json="johndoe", headers=token)
         assert response.status_code == 409
     finally:
         await delete_mock_user(client, token)
+
+
+@pytest.mark.asyncio
+async def test_name_update_logout(client: AsyncClient, mock_user: MockUser) -> None:
+    """
+    Test that updating the name logs user out
+    """
+    await create_mock_user(client, mock_user)
+    token = await login(client, mock_user)
+    try:
+        response = await client.put("/user", json="a", headers=token)
+        assert response.status_code == 200
+    except AssertionError:
+        await delete_mock_user(client, token)
+    token = await login(client, {"username": "a", "password": "password"})
+    response = await client.delete("/user", headers=token)
+    assert response.status_code == 200
 
 
 @pytest.mark.asyncio
