@@ -1,13 +1,15 @@
+import asyncio
 from collections.abc import AsyncGenerator
 from datetime import datetime
 import os
 from typing import Optional
 
 from sqlalchemy import delete, exists, select, update
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.exc import OperationalError
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import selectinload
 
-from todo_api.models import DbTag, DbTask, DbUser
+from todo_api.models import DbBase, DbTag, DbTask, DbUser
 from todo_api.schemas import NewTask, Task, User
 
 
@@ -23,6 +25,23 @@ engine = create_async_engine(CONNINFO)
 SessionLocal = async_sessionmaker(
     autocommit=False, autoflush=False, bind=engine, expire_on_commit=False
 )
+
+
+async def wait_for_db(engine: AsyncEngine, num_retries: int) -> None:
+    """
+    Wait for the database to come online and then initialize SQLAlchemy models if they haven't been yet
+    """
+    try_count = 0
+    while try_count < num_retries:
+        try_count += 1
+        try:
+            async with engine.begin() as conn:
+                await conn.run_sync(DbBase.metadata.create_all)
+        except OperationalError:
+            # DB not online yet, sleep for 1 second
+            await asyncio.sleep(1)
+    async with engine.begin() as conn:
+        await conn.run_sync(DbBase.metadata.create_all)
 
 
 async def get_db_conn() -> AsyncGenerator[AsyncSession]:
